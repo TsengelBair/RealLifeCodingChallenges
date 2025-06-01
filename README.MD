@@ -24,9 +24,9 @@ Explanation:
 **Example 3**:
 ```c++
 Input: occupiedPlaces = [1, 50, 100], maxPossiblePlace = 100
-Output: 1
+Output: 75
 Explanation:
-- the most remote places are 25 and 75, return any of them
+- The most remote places is 75
 ```
 
 **Solution**
@@ -82,5 +82,321 @@ int findMostRemotePlace(vector<int> &occupiedPlaces, int maxPossiblePlaces)
     }
 
     return mostRemotePlace;
+}
+```
+
+## 2. Calculate Workout Tonnage
+
+You are given a string representing a workout log, which contains various exercises and their corresponding weights and repetitions. The format of the log includes sections for warm-up sets and main sets, with weights and repetitions specified in the following format: weight * reps. Your task is to calculate the total tonnage lifted during the main sets of the workout and return the result as string.
+
+**Note!**
+
+You must return answer without extra zeros
+
+```
+1000.500 -> 1000.5
+550.0 -> 550 
+```
+
+**Example 1**:
+```c++
+/// use raw strings to avoid special characters (you don't need to specify \n text transfer)
+Input: workoutStr = R"(
+Main sets:
+(1)
+75 * 5 (easy)
+
+(2)
+75 * 5 (made a bad bridge)
+
+(3)
+72.5 * 5 (harder)
+)"
+Output: 1112,5
+Explanation:
+- The weights lifted in the main sets are 75, 75, and 72.5, with each lifted for 5 repetitions.
+- Total tonnage = (75 * 5) + (75 * 5) + (72.5 * 5) = 1112,5.
+```
+
+**Example 2**:
+```c++
+Input: workoutStr = R"(
+Main sets:
+(1)
+100 * 3 (heavy)
+
+(2)
+50 * 10 (light)
+)"
+Output: 800
+Explanation:
+- The weights lifted in the main sets are 100 and 50, with repetitions of 3 and 10 respectively.
+- Total tonnage = (100 * 3) + (50 * 10) = 800.
+```
+
+Use this test case for solving
+```c++
+std::string workout =
+            R"(
+01.05.2025
+20:35
+
+Bench press
+
+Warm-up sets:
+
+barbell * 10
+50 * 5
+60 * 5
+
+Main sets:
+
+(1)
+75 * 5 (easy)
+
+(2)
+75 * 5 (made a bad bridge)
+
+(3)
+72,5 * 5 (harder)
+
+(4)
+72,5 * 5
+
+(5)
+65 * 5 (with the reserve)
+
+(6)
+62,5 * 5 (with the reserve)
+)";
+```
+
+**Solution**
+
+Firstly, we don't need to iterate all over the string, let's trim our input string from the phrase: "Main sets:"
+
+```c++
+std::string trimStrToBaseSets(const std::string &workoutStr)
+{
+    std::string startKey = "Main sets:";
+    size_t startKeyPosition = workoutStr.find(startKey);
+
+    if (startKeyPosition == std::string::npos) {
+        std::cout << "Main sets missed" << std::endl;
+        return std::string();
+    }
+
+    return workoutStr.substr(startKeyPosition, workoutStr.size() - startKeyPosition);
+}
+```
+
+Secondly, we need to replace all commas with dots (for correct cast string to double)
+
+```c++
+std::replace(workoutStr.begin(), workoutStr.end(), ',', '.');
+```
+
+Now, let's make a pattern, to get all main sets
+
+```c++
+std::regex pattern(R"(\b(\d+(\.\d+)?)\s*\*\s*(\d+)\b)");
+```
+
+With raw string: \b (directly)
+
+Without: \\\b (must indicate that it is a special symbol)
+
+Explicit indication of boundaries for pattern: \b(template)\b is a good practice
+
+For example:
+
+```c++
+  std::regex pattern(R"(\bcat\b)");
+  std::string text = "The catalog is on the roof.";
+  std::smatch matches;
+
+  if (std::regex_search(text, matches, pattern)) {
+      std::cout << "Found: " << matches[0] << std::endl; 
+  } else {
+      std::cout << "Not found" << std::endl; // Output: Not found 
+  }
+```
+
+```c++
+  std::regex pattern(R"(cat)");
+  std::string text = "The catalog is on the roof.";
+  std::smatch matches;
+
+  if (std::regex_search(text, matches, pattern)) {
+      std::cout << "Found: " << matches[0] << std::endl; // Output: Found: cat
+  }
+```
+
+```
+\d+(\.\d+)?) - double num with optional fractional part
+```
+
+```
+\s*\*\s* - ignore count of space character and find symbol '*'
+```
+
+```
+(\d+) - reps count like int
+```
+
+Making an object to hold all matches
+```c++
+std::smatch matches;
+```
+
+Iterate and calc set tonnage
+```c++
+    auto it = workoutStr.cbegin();
+    while (std::regex_search(it, workoutStr.cend(), matches, pattern)) {
+        std::string weightStr = matches[1].str();
+        std::string reps = matches[3].str();
+
+        double setTonnage = std::stod(weightStr) * std::stoi(reps);
+        workoutTonnage += setTonnage;
+
+        it = matches[0].second;
+    }
+```
+
+Remember that you also need to remove extra zeros
+
+```c++
+std::string removeZerosFromDouble(double &val)
+{
+    std::string stringVal = std::to_string(val);
+    for (int i = stringVal.size() - 1; i > 0; --i) {
+        if (stringVal[i] == '0' && stringVal[i - 1] == '.')
+        {
+            stringVal.pop_back();
+            stringVal.pop_back();
+            return stringVal;
+        }
+        else if (stringVal[i] == '0')
+        {
+            stringVal.pop_back();
+        }
+        else {
+            break;
+        }
+    }
+
+    return stringVal;
+}
+```
+
+Full solution
+```c++
+#include <iostream>
+#include <string>
+#include <regex>
+#include <list>
+
+std::string trimStrToBaseSets(const std::string &workoutStr)
+{
+    std::string startKey = "Main sets:";
+    size_t startKeyPosition = workoutStr.find(startKey);
+
+    if (startKeyPosition == std::string::npos) {
+        std::cout << "Main sets missed" << std::endl;
+        return std::string();
+    }
+
+    return workoutStr.substr(startKeyPosition, workoutStr.size() - startKeyPosition);
+}
+
+double calcWorkoutTonnage(std::string &workoutStr)
+{
+    double workoutTonnage = 0.0;
+
+    std::replace(workoutStr.begin(), workoutStr.end(), ',', '.');
+
+    std::regex pattern(R"(\b(\d+(\.\d+)?)\s*\*\s*(\d+)\b)");
+    std::smatch matches;
+
+    auto it = workoutStr.cbegin();
+    while (std::regex_search(it, workoutStr.cend(), matches, pattern)) {
+        std::string weightStr = matches[1].str();
+        std::string reps = matches[3].str();
+
+        double setTonnage = std::stod(weightStr) * std::stoi(reps);
+        workoutTonnage += setTonnage;
+
+        it = matches[0].second;
+    }
+
+    return workoutTonnage;
+}
+
+std::string removeZerosFromDouble(double &val)
+{
+    std::string stringVal = std::to_string(val);
+    for (int i = stringVal.size() - 1; i > 0; --i) {
+        if (stringVal[i] == '0' && stringVal[i - 1] == '.')
+        {
+            stringVal.pop_back();
+            stringVal.pop_back();
+            return stringVal;
+        }
+        else if (stringVal[i] == '0')
+        {
+            stringVal.pop_back();
+        }
+        else {
+            break;
+        }
+    }
+
+    return stringVal;
+}
+
+int main()
+{
+    std::string workout =
+            R"(
+01.05.2025
+20:35
+
+Bench press
+
+Warm-up sets:
+
+barbell * 10
+50 * 5
+60 * 5
+
+Main sets:
+
+(1)
+75 * 5 (easy)
+
+(2)
+75 * 5 (made a bad bridge)
+
+(3)
+72,5 * 5 (harder)
+
+(4)
+72,5 * 5
+
+(5)
+65 * 5 (with the reserve)
+
+(6)
+62,5 * 5 (with the reserve)
+)";
+
+    std::string trimmedWorkoutStr = trimStrToBaseSets(workout);
+    double res = calcWorkoutTonnage(trimmedWorkoutStr);
+
+    std::string resStr = removeZerosFromDouble(res);
+    std::cout << resStr << std::endl;
+
+
+    return 0;
 }
 ```
